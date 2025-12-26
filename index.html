@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Media Culler & Sorter</title>
+    <title>Media Sort</title>
     
     <!-- External Lib for HEIC Support -->
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
@@ -18,13 +18,13 @@
             --text-dim: #a0a0a0;
             --danger: #cf6679;
             --border: #333;
+            --hover: #2c2c2c;
         }
 
         * { box-sizing: border-box; outline: none; user-select: none; }
         
         body {
-            margin: 0;
-            padding: 0;
+            margin: 0; padding: 0;
             background-color: var(--bg-dark);
             color: var(--text-main);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -45,30 +45,30 @@
             justify-content: space-between;
         }
 
-        h1 { font-size: 1rem; margin: 0; color: var(--primary); letter-spacing: 1px; }
+        h1 { font-size: 1.1rem; margin: 0; color: var(--primary); letter-spacing: 1px; font-weight: 600; }
 
         .btn {
             background: #333;
             color: white;
             border: 1px solid #444;
-            padding: 6px 12px;
+            padding: 5px 10px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 0.85rem;
             transition: background 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .btn:hover { background: #444; }
         .btn-primary { background: var(--primary); color: #000; font-weight: bold; border: none; }
         .btn-primary:hover { background: #9965f4; }
         .btn-success { background: var(--secondary); color: #000; font-weight: bold; border: none; }
         .btn-success:hover { background: #01bda7; }
+        .btn-sm { padding: 2px 6px; font-size: 0.75rem; height: 20px; margin-left: 5px; }
 
         /* --- Main Layout --- */
-        #workspace {
-            flex: 1;
-            display: flex;
-            overflow: hidden;
-        }
+        #workspace { flex: 1; display: flex; overflow: hidden; }
 
         /* --- Left: Preview --- */
         #preview-area {
@@ -77,29 +77,17 @@
             flex-direction: column;
             position: relative;
             background: #000;
-            justify-content: center;
-            align-items: center;
         }
 
         #media-container {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
         }
 
-        img, video {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
+        img, video { max-width: 100%; max-height: 100%; object-fit: contain; }
 
         #file-info {
-            position: absolute;
-            top: 10px;
-            left: 10px;
+            position: absolute; top: 10px; left: 10px;
             background: rgba(0,0,0,0.7);
             padding: 5px 10px;
             border-radius: 4px;
@@ -109,19 +97,16 @@
         }
 
         #loading-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 20;
             display: none;
+            justify-content: center; align-items: center;
+            z-index: 20;
         }
 
         /* --- Right: Sidebar --- */
         #sidebar {
-            width: 300px;
+            width: 320px;
             background-color: var(--bg-panel);
             border-left: 1px solid var(--border);
             display: flex;
@@ -130,62 +115,70 @@
         }
 
         .sidebar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; padding-bottom: 10px;
             border-bottom: 1px solid var(--border);
         }
 
         #folder-list {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            flex: 1; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 4px;
         }
 
-        .folder-item {
-            display: flex;
-            align-items: center;
+        .folder-row {
+            display: flex; align-items: center;
             background: #2a2a2a;
-            padding: 10px;
+            padding: 8px 10px;
             border-radius: 4px;
             cursor: pointer;
             border: 1px solid transparent;
-            position: relative;
+            transition: background 0.1s;
         }
 
-        .folder-item:hover { background: #333; }
-        .folder-item.active { border-color: var(--primary); background: #332244; }
-        
+        .folder-row:hover { background: #333; }
+        .folder-row.active { border-color: var(--primary); background: #332244; }
+
+        /* Visual Indentation logic handled in JS/CSS classes */
+        .indent-0 { margin-left: 0px; }
+        .indent-1 { margin-left: 20px; border-left: 2px solid #444; }
+        .indent-2 { margin-left: 40px; border-left: 2px solid #444; }
+        .indent-3 { margin-left: 60px; border-left: 2px solid #444; }
+        /* Cap visual indentation at 3, functionally infinite */
+
         .folder-checkbox {
-            width: 18px;
-            height: 18px;
-            margin-right: 10px;
+            width: 16px; height: 16px; margin-right: 8px;
             accent-color: var(--secondary);
-            pointer-events: none; /* Click container to toggle */
+            pointer-events: none;
         }
 
-        .folder-name { flex: 1; font-size: 0.9rem; }
+        .folder-name { flex: 1; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .folder-actions { display: flex; align-items: center; }
+
         .hotkey-badge {
-            background: #444;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 0.7rem;
-            color: var(--text-dim);
-            margin-left: 5px;
+            background: #444; color: var(--text-dim);
+            padding: 1px 5px; border-radius: 3px;
+            font-size: 0.7rem; font-family: monospace;
+            margin-right: 5px;
+            min-width: 18px; text-align: center;
         }
+
+        .add-child-btn {
+            background: transparent; border: 1px solid #555;
+            color: #aaa; border-radius: 50%;
+            width: 20px; height: 20px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 14px; line-height: 1;
+            padding: 0;
+        }
+        .add-child-btn:hover { background: #555; color: white; }
 
         /* --- Footer --- */
         footer {
             height: 60px;
             background-color: var(--bg-panel);
             border-top: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            display: flex; align-items: center; justify-content: space-between;
             padding: 0 20px;
         }
 
@@ -193,29 +186,33 @@
 
         /* --- Modals --- */
         .modal {
-            display: none;
-            position: fixed;
-            z-index: 100;
+            display: none; position: fixed; z-index: 100;
             left: 0; top: 0; width: 100%; height: 100%;
-            background-color: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
+            background-color: rgba(0,0,0,0.7);
+            align-items: center; justify-content: center;
         }
         .modal-content {
             background-color: var(--bg-panel);
             padding: 25px;
             border: 1px solid var(--border);
             border-radius: 8px;
-            width: 400px;
-            max-width: 90%;
+            width: 500px; max-width: 90%;
+            max-height: 85vh; overflow-y: auto;
         }
-        .modal h2 { margin-top: 0; color: var(--primary); }
-        .form-group { margin-bottom: 15px; }
-        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; }
-        .form-group input[type="text"] {
-            width: 100%; padding: 8px; background: #121212; border: 1px solid #444; color: white;
-        }
+        .modal h2 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-main); }
         .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        
+        /* Settings Table */
+        .settings-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .settings-table th { text-align: left; padding: 5px; border-bottom: 1px solid #444; color: var(--text-dim); font-size: 0.8rem; }
+        .settings-table td { padding: 5px; border-bottom: 1px solid #333; }
+        .settings-input { 
+            background: #121212; border: 1px solid #444; color: white; width: 50px; text-align: center; 
+            padding: 4px; border-radius: 4px; text-transform: uppercase;
+        }
+        .settings-input:focus { border-color: var(--primary); }
 
         /* Spinner */
         .spinner {
@@ -231,23 +228,21 @@
 <body>
 
     <header>
-        <h1>Media Culler</h1>
+        <h1>Media Sort</h1>
         <button class="btn" onclick="openSettings()">Settings</button>
     </header>
 
     <div id="workspace">
         <div id="preview-area">
             <div id="file-info">No files loaded</div>
-            <div id="media-container">
-                <!-- Media injected here -->
-            </div>
+            <div id="media-container"></div>
             <div id="loading-overlay"><div class="spinner"></div></div>
         </div>
 
         <div id="sidebar">
             <div class="sidebar-header">
-                <span>Destinations</span>
-                <button class="btn" onclick="addFolder()">+</button>
+                <span>Output Folders</span>
+                <button class="btn btn-sm" onclick="addFolder(null)" title="Create Root Folder">+</button>
             </div>
             <div id="folder-list">
                 <!-- Folders injected here -->
@@ -256,45 +251,63 @@
     </div>
 
     <footer>
-        <button class="btn" onclick="importDirectory()">Import Source Directory</button>
+        <button class="btn" onclick="importDirectory()">Import Source</button>
         <div id="status-bar">Ready</div>
-        <button class="btn btn-success" onclick="exportFiles()">Execute Copy/Export</button>
+        <button class="btn btn-success" onclick="exportFiles()">Save / Copy</button>
     </footer>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal">
         <div class="modal-content">
             <h2>Settings</h2>
+            
             <div class="form-group">
                 <label class="checkbox-label">
                     <input type="checkbox" id="chk-copy-unsorted">
                     Copy unsorted media to "Unsorted" folder
                 </label>
             </div>
+
             <div class="form-group">
-                <label>Folder Hotkeys (1-6)</label>
-                <div style="font-size: 0.8rem; color: #888;">Hotkeys map automatically to the first 6 folders in the list.</div>
+                <label>Folder Hotkey Configuration</label>
+                <p style="font-size: 0.8rem; color: #888; margin-top:0;">
+                    Hotkeys 1-6 are assigned automatically to the top folders. You can override specific folders here.
+                </p>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="settings-table">
+                        <thead>
+                            <tr>
+                                <th>Folder Path</th>
+                                <th style="width: 70px;">Hotkey</th>
+                            </tr>
+                        </thead>
+                        <tbody id="settings-hotkey-list">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <div style="text-align: right;">
-                <button class="btn btn-primary" onclick="closeSettings()">Close</button>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeSettings()">Save & Close</button>
             </div>
         </div>
     </div>
 
     <script>
         /**
-         * APPLICATION STATE
+         * STATE MANAGEMENT
          */
         const state = {
-            files: [], // Array of FileSystemFileHandle
-            folders: [], // Array of { id, name }
-            associations: {}, // Map<fileName, Set<folderId>>
+            files: [],           // Array of FileHandle
+            // Folder structure: { id, name, parentId, manualHotkey }
+            folders: [],         
+            associations: {},    // Map<fileName, Set<folderId>>
             currentIndex: -1,
             settings: {
                 copyUnsorted: false
             },
             directoryHandle: null,
-            // Cache management
             objectURLCache: new Map(), // Map<index, stringUrl>
         };
 
@@ -310,13 +323,12 @@
         const loader = document.getElementById('loading-overlay');
 
         /**
-         * CORE LOGIC: IMPORT
+         * INITIALIZATION & IMPORT
          */
         async function importDirectory() {
             try {
-                // Check for API support
                 if (!window.showDirectoryPicker) {
-                    alert("Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera.");
+                    alert("Browser not supported. Please use Chrome or Edge.");
                     return;
                 }
 
@@ -325,23 +337,22 @@
                 state.associations = {};
                 state.currentIndex = -1;
                 
-                statusBar.textContent = "Scanning directory...";
+                statusBar.textContent = "Scanning...";
                 
                 for await (const entry of getFilesRecursively(state.directoryHandle)) {
                     const ext = entry.name.split('.').pop().toLowerCase();
                     if ([...supportedImages, ...supportedVideos, ...appleFormats].includes(ext)) {
                         state.files.push(entry);
-                        // Initialize empty associations
                         state.associations[entry.name] = new Set();
                     }
                 }
 
-                // Natural sort files
+                // Sort files alphanumerically
                 state.files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
                 if (state.files.length > 0) {
                     state.currentIndex = 0;
-                    renderSidebar(); // Refresh sidebar to clear active states
+                    renderSidebar();
                     await loadMedia(0);
                     statusBar.textContent = `Loaded ${state.files.length} files.`;
                 } else {
@@ -349,35 +360,30 @@
                 }
 
             } catch (err) {
-                console.error(err);
-                if (err.name !== 'AbortError') alert("Error importing: " + err.message);
-            }
-        }
-
-        async function* getFilesRecursively(entry) {
-            if (entry.kind === 'file') {
-                yield entry;
-            } else if (entry.kind === 'directory') {
-                for await (const handle of entry.values()) {
-                    yield* getFilesRecursively(handle);
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    alert("Import error: " + err.message);
                 }
             }
         }
 
+        async function* getFilesRecursively(entry) {
+            if (entry.kind === 'file') yield entry;
+            else if (entry.kind === 'directory') {
+                for await (const handle of entry.values()) yield* getFilesRecursively(handle);
+            }
+        }
+
         /**
-         * CORE LOGIC: PREVIEW & BUFFERING
+         * PREVIEW LOGIC
          */
         async function loadMedia(index) {
             if (index < 0 || index >= state.files.length) return;
 
-            // Update UI Info
             const handle = state.files[index];
             fileInfo.textContent = `[${index + 1}/${state.files.length}] ${handle.name}`;
-            
-            // Highlight folders associated with this file
-            updateSidebarSelection();
+            updateSidebarActiveState(); // Highlight folders for this file
 
-            // Check cache
             let url = state.objectURLCache.get(index);
             
             if (!url) {
@@ -386,20 +392,16 @@
                     const file = await handle.getFile();
                     url = await processFileForPreview(file);
                     state.objectURLCache.set(index, url);
-                    
-                    // Cleanup old cache (keep window of +/- 5)
                     cleanCache(index);
                 } catch (e) {
-                    console.error("Preview error", e);
                     loader.style.display = 'none';
                     mediaContainer.innerHTML = `<div style="color:red">Preview Unavailable</div>`;
                     return;
                 }
             }
-
             renderPreview(url, handle.name);
             
-            // Buffer next image
+            // Preload next
             if (index + 1 < state.files.length && !state.objectURLCache.has(index + 1)) {
                 preload(index + 1);
             }
@@ -407,267 +409,353 @@
 
         async function processFileForPreview(file) {
             const ext = file.name.split('.').pop().toLowerCase();
-            
-            // Handle HEIC
             if (ext === 'heic') {
                 try {
                     const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.5 });
                     return URL.createObjectURL(blob);
-                } catch (e) {
-                    console.warn("HEIC conversion failed", e);
-                    throw e;
-                }
+                } catch(e) { throw e; }
             }
-
             return URL.createObjectURL(file);
         }
 
         function renderPreview(url, filename) {
             const ext = filename.split('.').pop().toLowerCase();
-            mediaContainer.innerHTML = ''; // Clear
-
-            let element;
-            if (supportedVideos.includes(ext) || ext === 'mov') {
-                element = document.createElement('video');
-                element.src = url;
-                element.controls = true;
-                element.autoplay = true;
-                element.loop = true;
-                element.muted = true; // Required for autoplay in many cases
-            } else {
-                element = document.createElement('img');
-                element.src = url;
-            }
-
-            element.onload = () => loader.style.display = 'none';
-            element.oncanplay = () => loader.style.display = 'none';
-            element.onerror = () => {
-                loader.style.display = 'none';
-                mediaContainer.innerHTML = 'Preview Error';
-            };
-
-            mediaContainer.appendChild(element);
+            mediaContainer.innerHTML = '';
             
-            // Failsafe for instant load
-            setTimeout(() => loader.style.display = 'none', 500); 
+            let el;
+            if (supportedVideos.includes(ext) || ext === 'mov') {
+                el = document.createElement('video');
+                el.src = url;
+                el.controls = true;
+                el.autoplay = true;
+                el.loop = true;
+                el.muted = true; // Often required for autoplay
+            } else {
+                el = document.createElement('img');
+                el.src = url;
+            }
+            
+            el.onload = el.oncanplay = () => loader.style.display = 'none';
+            mediaContainer.appendChild(el);
+            setTimeout(() => loader.style.display = 'none', 300);
         }
 
         async function preload(index) {
             const handle = state.files[index];
             const file = await handle.getFile();
-            const url = await processFileForPreview(file);
-            state.objectURLCache.set(index, url);
+            state.objectURLCache.set(index, await processFileForPreview(file));
         }
 
-        function cleanCache(currentIndex) {
-            for (const [key, url] of state.objectURLCache.entries()) {
-                if (Math.abs(key - currentIndex) > 5) {
+        function cleanCache(currIdx) {
+            for (const [k, url] of state.objectURLCache.entries()) {
+                if (Math.abs(k - currIdx) > 5) {
                     URL.revokeObjectURL(url);
-                    state.objectURLCache.delete(key);
+                    state.objectURLCache.delete(k);
                 }
             }
         }
 
         /**
-         * CORE LOGIC: FOLDER MANAGEMENT & SIDEBAR
+         * FOLDER MANAGEMENT & RECURSIVE SIDEBAR
          */
-        function addFolder() {
-            const name = prompt("Folder Name:");
+        function addFolder(parentId = null) {
+            const name = prompt(parentId ? "Sub-folder Name:" : "Folder Name:");
             if (name) {
-                const id = Date.now().toString();
-                state.folders.push({ id, name });
+                const id = Date.now().toString() + Math.random().toString(16).slice(2);
+                state.folders.push({ id, name, parentId, manualHotkey: null });
                 renderSidebar();
             }
         }
 
+        // Returns flat list of folders in DFS order (Visual Order)
+        function getVisualFolderList() {
+            const result = [];
+            const buildTree = (pid, depth) => {
+                const children = state.folders
+                    .filter(f => f.parentId === pid)
+                    .sort((a,b) => a.name.localeCompare(b.name)); // Alphabetical sibling sort
+                
+                children.forEach(child => {
+                    result.push({ ...child, depth });
+                    buildTree(child.id, depth + 1);
+                });
+            };
+            buildTree(null, 0);
+            return result;
+        }
+
         function renderSidebar() {
             folderListEl.innerHTML = '';
-            state.folders.forEach((folder, idx) => {
-                const div = document.createElement('div');
-                div.className = 'folder-item';
-                div.dataset.id = folder.id;
-                div.onclick = () => toggleFolderAssignment(folder.id);
+            const visualList = getVisualFolderList();
 
+            visualList.forEach((folder, index) => {
+                const row = document.createElement('div');
+                row.className = 'folder-row';
+                // Indentation class capped at 3
+                const indentClass = `indent-${Math.min(folder.depth, 3)}`;
+                row.classList.add(indentClass);
+                row.dataset.id = folder.id;
+
+                // Click event (avoid triggering when clicking buttons)
+                row.onclick = (e) => {
+                    if(e.target.tagName === 'BUTTON') return;
+                    toggleFolderAssignment(folder.id);
+                };
+
+                // Checkbox
                 const chk = document.createElement('input');
                 chk.type = 'checkbox';
                 chk.className = 'folder-checkbox';
                 chk.checked = isFolderSelected(folder.id);
+                row.appendChild(chk);
+
+                // Name
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'folder-name';
+                nameSpan.innerText = folder.name;
+                row.appendChild(nameSpan);
+
+                // Actions (Hotkey + Add Child)
+                const actions = document.createElement('div');
+                actions.className = 'folder-actions';
+
+                // Determine Hotkey Display
+                // If manual exists, show it. Else if index < 6, show index+1.
+                let displayKey = folder.manualHotkey ? folder.manualHotkey : (index < 6 ? (index + 1) : null);
                 
-                const span = document.createElement('span');
-                span.className = 'folder-name';
-                span.innerText = folder.name;
-
-                div.appendChild(chk);
-                div.appendChild(span);
-
-                if (idx < 6) {
+                if (displayKey) {
                     const badge = document.createElement('span');
                     badge.className = 'hotkey-badge';
-                    badge.innerText = idx + 1;
-                    div.appendChild(badge);
+                    badge.innerText = displayKey;
+                    actions.appendChild(badge);
                 }
 
-                folderListEl.appendChild(div);
-            });
-        }
+                // Add Child Button
+                const addBtn = document.createElement('button');
+                addBtn.className = 'add-child-btn';
+                addBtn.innerText = '+';
+                addBtn.title = 'Create Sub-folder';
+                addBtn.onclick = () => addFolder(folder.id);
+                actions.appendChild(addBtn);
 
-        function isFolderSelected(folderId) {
-            if (state.currentIndex === -1) return false;
-            const fileName = state.files[state.currentIndex].name;
-            const set = state.associations[fileName];
-            return set ? set.has(folderId) : false;
+                row.appendChild(actions);
+                folderListEl.appendChild(row);
+            });
         }
 
         function toggleFolderAssignment(folderId) {
             if (state.currentIndex === -1) return;
+            const fName = state.files[state.currentIndex].name;
+            if (!state.associations[fName]) state.associations[fName] = new Set();
             
-            const fileName = state.files[state.currentIndex].name;
-            if (!state.associations[fileName]) state.associations[fileName] = new Set();
-            
-            const set = state.associations[fileName];
-            if (set.has(folderId)) {
-                set.delete(folderId);
-            } else {
-                set.add(folderId);
-            }
-            
-            // Update UI for this specific item without re-rendering whole list
-            const item = folderListEl.querySelector(`.folder-item[data-id="${folderId}"] input`);
-            if (item) item.checked = set.has(folderId);
+            const set = state.associations[fName];
+            if (set.has(folderId)) set.delete(folderId);
+            else set.add(folderId);
+
+            // Update UI
+            updateSidebarActiveState();
         }
 
-        function updateSidebarSelection() {
-            // Refresh all checkboxes based on current file
-            const fileName = state.files[state.currentIndex].name;
-            const set = state.associations[fileName] || new Set();
+        function isFolderSelected(fid) {
+            if (state.currentIndex === -1) return false;
+            const set = state.associations[state.files[state.currentIndex].name];
+            return set ? set.has(fid) : false;
+        }
+
+        function updateSidebarActiveState() {
+            if (state.currentIndex === -1) return;
+            const set = state.associations[state.files[state.currentIndex].name] || new Set();
             
-            const checkboxes = folderListEl.querySelectorAll('.folder-item');
-            checkboxes.forEach(div => {
-                const id = div.dataset.id;
-                const input = div.querySelector('input');
-                input.checked = set.has(id);
-                
-                if(input.checked) div.classList.add('active');
-                else div.classList.remove('active');
+            const rows = folderListEl.querySelectorAll('.folder-row');
+            rows.forEach(r => {
+                const id = r.dataset.id;
+                const chk = r.querySelector('.folder-checkbox');
+                const isChecked = set.has(id);
+                chk.checked = isChecked;
+                if(isChecked) r.classList.add('active');
+                else r.classList.remove('active');
             });
         }
 
         /**
-         * CORE LOGIC: INPUT HANDLING
+         * INPUT HANDLING (Nav & Hotkeys)
          */
         window.addEventListener('keydown', (e) => {
             if (document.querySelector('.modal').style.display === 'flex') return;
             if (state.currentIndex === -1) return;
 
-            // Navigation
-            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
-                if (state.currentIndex < state.files.length - 1) {
-                    state.currentIndex++;
-                    loadMedia(state.currentIndex);
-                }
-            } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
-                if (state.currentIndex > 0) {
-                    state.currentIndex--;
-                    loadMedia(state.currentIndex);
-                }
-            }
+            const key = e.key.toUpperCase();
 
-            // Hotkeys 1-6
-            if (['1','2','3','4','5','6'].includes(e.key)) {
-                const idx = parseInt(e.key) - 1;
-                if (state.folders[idx]) {
-                    toggleFolderAssignment(state.folders[idx].id);
-                    updateSidebarSelection(); // Update visual state immediately
-                }
+            // Navigation
+            if (e.key === 'ArrowRight' || key === 'D') {
+                if (state.currentIndex < state.files.length - 1) loadMedia(++state.currentIndex);
+            } 
+            else if (e.key === 'ArrowLeft' || key === 'A') {
+                if (state.currentIndex > 0) loadMedia(--state.currentIndex);
+            }
+            // Folder Hotkeys
+            else {
+                handleFolderHotkey(key);
             }
         });
 
+        function handleFolderHotkey(key) {
+            const visualList = getVisualFolderList();
+            
+            // 1. Check for manual override match
+            const manualMatch = state.folders.find(f => f.manualHotkey === key);
+            if (manualMatch) {
+                toggleFolderAssignment(manualMatch.id);
+                return;
+            }
+
+            // 2. Check for automatic 1-6
+            // Only applicable if key is 1-6
+            if (['1','2','3','4','5','6'].includes(key)) {
+                const idx = parseInt(key) - 1;
+                if (visualList[idx]) {
+                    toggleFolderAssignment(visualList[idx].id);
+                }
+            }
+        }
+
         /**
-         * CORE LOGIC: EXPORT / COPY
+         * SETTINGS MODAL
+         */
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+            document.getElementById('chk-copy-unsorted').checked = state.settings.copyUnsorted;
+            renderSettingsTable();
+        }
+
+        function closeSettings() {
+            state.settings.copyUnsorted = document.getElementById('chk-copy-unsorted').checked;
+            
+            // Save hotkeys from table inputs
+            const rows = document.querySelectorAll('.settings-hotkey-row');
+            rows.forEach(row => {
+                const fid = row.dataset.id;
+                const val = row.querySelector('input').value.trim().toUpperCase().charAt(0);
+                const folder = state.folders.find(f => f.id === fid);
+                if (folder) folder.manualHotkey = val || null;
+            });
+
+            document.getElementById('settings-modal').style.display = 'none';
+            renderSidebar(); // Re-render to show updated keys
+        }
+
+        function renderSettingsTable() {
+            const tbody = document.getElementById('settings-hotkey-list');
+            tbody.innerHTML = '';
+            const visualList = getVisualFolderList();
+
+            visualList.forEach(f => {
+                const tr = document.createElement('tr');
+                tr.className = 'settings-hotkey-row';
+                tr.dataset.id = f.id;
+                
+                // Build path string for clarity
+                let pathStr = f.name;
+                let parent = state.folders.find(p => p.id === f.parentId);
+                while(parent) {
+                    pathStr = parent.name + ' / ' + pathStr;
+                    parent = state.folders.find(p => p.id === parent.parentId);
+                }
+
+                const tdName = document.createElement('td');
+                tdName.textContent = pathStr;
+                
+                const tdInput = document.createElement('td');
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'settings-input';
+                input.maxLength = 1;
+                input.value = f.manualHotkey || '';
+                
+                tdInput.appendChild(input);
+                tr.appendChild(tdName);
+                tr.appendChild(tdInput);
+                tbody.appendChild(tr);
+            });
+        }
+
+        /**
+         * EXPORT LOGIC
          */
         async function exportFiles() {
             if (state.files.length === 0) return;
-
-            const confirmMsg = `Ready to copy files? This will select a destination folder and begin copying.`;
-            if (!confirm(confirmMsg)) return;
+            if (!confirm(`Ready to copy files to destination?`)) return;
 
             try {
-                // 1. Get Destination Handle
-                const destHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                const destRoot = await window.showDirectoryPicker({ mode: 'readwrite' });
                 
-                statusBar.textContent = "Starting export...";
-                let copyCount = 0;
-                let errorCount = 0;
+                statusBar.textContent = "Exporting...";
+                let count = 0;
 
-                // 2. Prepare Folder Handles
-                const folderHandles = {}; // map id -> directoryHandle
-                
-                // Create named folders
-                for (const folder of state.folders) {
-                    folderHandles[folder.id] = await destHandle.getDirectoryHandle(folder.name, { create: true });
-                }
+                // 1. Resolve Folder Paths
+                // We need to map folderID -> DirectoryHandle in destination
+                const folderHandles = {}; 
 
-                // Create unsorted folder if needed
+                // Recursively create handles
+                const getHandleForFolder = async (folderId) => {
+                    if (folderHandles[folderId]) return folderHandles[folderId];
+                    
+                    const folder = state.folders.find(f => f.id === folderId);
+                    if (!folder) return null;
+
+                    let parentHandle = destRoot;
+                    if (folder.parentId) {
+                        parentHandle = await getHandleForFolder(folder.parentId);
+                    }
+                    
+                    const handle = await parentHandle.getDirectoryHandle(folder.name, { create: true });
+                    folderHandles[folderId] = handle;
+                    return handle;
+                };
+
+                // Create Unsorted handle if needed
                 let unsortedHandle = null;
                 if (state.settings.copyUnsorted) {
-                    unsortedHandle = await destHandle.getDirectoryHandle("Unsorted", { create: true });
+                    unsortedHandle = await destRoot.getDirectoryHandle("Unsorted", { create: true });
                 }
 
-                // 3. Iterate and Copy
+                // 2. Copy Loop
                 for (let i = 0; i < state.files.length; i++) {
-                    const srcHandle = state.files[i];
-                    const fileName = srcHandle.name;
-                    const assignedIds = state.associations[fileName];
+                    const src = state.files[i];
+                    statusBar.textContent = `Copying ${i+1}/${state.files.length}: ${src.name}`;
                     
-                    statusBar.textContent = `Processing ${i+1}/${state.files.length}: ${fileName}`;
-
-                    // If assigned to folders
+                    const assignedIds = state.associations[src.name];
+                    
                     if (assignedIds && assignedIds.size > 0) {
-                        for (const folderId of assignedIds) {
-                            if (folderHandles[folderId]) {
-                                await copyFile(srcHandle, folderHandles[folderId]);
-                                copyCount++;
-                            }
+                        for (const fid of assignedIds) {
+                            const destDir = await getHandleForFolder(fid);
+                            await copyFile(src, destDir);
+                            count++;
                         }
                     } else if (state.settings.copyUnsorted && unsortedHandle) {
-                        // Unsorted logic
-                        await copyFile(srcHandle, unsortedHandle);
-                        copyCount++;
+                        await copyFile(src, unsortedHandle);
+                        count++;
                     }
                 }
 
-                statusBar.textContent = `Done! Copied ${copyCount} files.`;
-                alert(`Export Complete.\nCopied: ${copyCount} instances.`);
+                statusBar.textContent = `Export complete. Copies created: ${count}`;
+                alert(`Export Complete! ${count} files copied.`);
 
             } catch (err) {
                 console.error(err);
-                alert("Export failed or cancelled: " + err.message);
-                statusBar.textContent = "Export failed.";
+                statusBar.textContent = "Export Failed.";
+                alert("Export failed: " + err.message);
             }
         }
 
         async function copyFile(fileHandle, dirHandle) {
             const file = await fileHandle.getFile();
-            // Create write handle in new dir
-            const newFileHandle = await dirHandle.getFileHandle(file.name, { create: true });
-            const writable = await newFileHandle.createWritable();
+            const newHandle = await dirHandle.getFileHandle(file.name, { create: true });
+            const writable = await newHandle.createWritable();
             await writable.write(file);
             await writable.close();
         }
 
-        /**
-         * UI HELPERS
-         */
-        function openSettings() {
-            document.getElementById('settings-modal').style.display = 'flex';
-            document.getElementById('chk-copy-unsorted').checked = state.settings.copyUnsorted;
-        }
-
-        function closeSettings() {
-            state.settings.copyUnsorted = document.getElementById('chk-copy-unsorted').checked;
-            document.getElementById('settings-modal').style.display = 'none';
-        }
-        
     </script>
 </body>
 </html>
