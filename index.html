@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Media Culler & Sorter</title>
+    
+    <!-- External Lib for HEIC Support -->
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-panel: #1e1e1e;
+            --primary: #bb86fc;
+            --secondary: #03dac6;
+            --text-main: #e0e0e0;
+            --text-dim: #a0a0a0;
+            --danger: #cf6679;
+            --border: #333;
+        }
+
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Header --- */
+        header {
+            height: 50px;
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            justify-content: space-between;
+        }
+
+        h1 { font-size: 1rem; margin: 0; color: var(--primary); letter-spacing: 1px; }
+
+        .btn {
+            background: #333;
+            color: white;
+            border: 1px solid #444;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #444; }
+        .btn-primary { background: var(--primary); color: #000; font-weight: bold; border: none; }
+        .btn-primary:hover { background: #9965f4; }
+        .btn-success { background: var(--secondary); color: #000; font-weight: bold; border: none; }
+        .btn-success:hover { background: #01bda7; }
+
+        /* --- Main Layout --- */
+        #workspace {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- Left: Preview --- */
+        #preview-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: #000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #media-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        img, video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        #file-info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            display: none;
+        }
+
+        /* --- Right: Sidebar --- */
+        #sidebar {
+            width: 300px;
+            background-color: var(--bg-panel);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        .sidebar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        #folder-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .folder-item {
+            display: flex;
+            align-items: center;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .folder-item:hover { background: #333; }
+        .folder-item.active { border-color: var(--primary); background: #332244; }
+        
+        .folder-checkbox {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            accent-color: var(--secondary);
+            pointer-events: none; /* Click container to toggle */
+        }
+
+        .folder-name { flex: 1; font-size: 0.9rem; }
+        .hotkey-badge {
+            background: #444;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-left: 5px;
+        }
+
+        /* --- Footer --- */
+        footer {
+            height: 60px;
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+
+        #status-bar { font-size: 0.85rem; color: var(--text-dim); }
+
+        /* --- Modals --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background-color: var(--bg-panel);
+            padding: 25px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal h2 { margin-top: 0; color: var(--primary); }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-size: 0.9rem; }
+        .form-group input[type="text"] {
+            width: 100%; padding: 8px; background: #121212; border: 1px solid #444; color: white;
+        }
+        .checkbox-label { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+
+        /* Spinner */
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            width: 36px; height: 36px; border-radius: 50%;
+            border-left-color: var(--secondary);
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Media Culler</h1>
+        <button class="btn" onclick="openSettings()">Settings</button>
+    </header>
+
+    <div id="workspace">
+        <div id="preview-area">
+            <div id="file-info">No files loaded</div>
+            <div id="media-container">
+                <!-- Media injected here -->
+            </div>
+            <div id="loading-overlay"><div class="spinner"></div></div>
+        </div>
+
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <span>Destinations</span>
+                <button class="btn" onclick="addFolder()">+</button>
+            </div>
+            <div id="folder-list">
+                <!-- Folders injected here -->
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <button class="btn" onclick="importDirectory()">Import Source Directory</button>
+        <div id="status-bar">Ready</div>
+        <button class="btn btn-success" onclick="exportFiles()">Execute Copy/Export</button>
+    </footer>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h2>Settings</h2>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="chk-copy-unsorted">
+                    Copy unsorted media to "Unsorted" folder
+                </label>
+            </div>
+            <div class="form-group">
+                <label>Folder Hotkeys (1-6)</label>
+                <div style="font-size: 0.8rem; color: #888;">Hotkeys map automatically to the first 6 folders in the list.</div>
+            </div>
+            <div style="text-align: right;">
+                <button class="btn btn-primary" onclick="closeSettings()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * APPLICATION STATE
+         */
+        const state = {
+            files: [], // Array of FileSystemFileHandle
+            folders: [], // Array of { id, name }
+            associations: {}, // Map<fileName, Set<folderId>>
+            currentIndex: -1,
+            settings: {
+                copyUnsorted: false
+            },
+            directoryHandle: null,
+            // Cache management
+            objectURLCache: new Map(), // Map<index, stringUrl>
+        };
+
+        const supportedImages = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'];
+        const supportedVideos = ['mp4', 'webm', 'mov', 'm4v'];
+        const appleFormats = ['heic'];
+        
+        // DOM Elements
+        const mediaContainer = document.getElementById('media-container');
+        const fileInfo = document.getElementById('file-info');
+        const folderListEl = document.getElementById('folder-list');
+        const statusBar = document.getElementById('status-bar');
+        const loader = document.getElementById('loading-overlay');
+
+        /**
+         * CORE LOGIC: IMPORT
+         */
+        async function importDirectory() {
+            try {
+                // Check for API support
+                if (!window.showDirectoryPicker) {
+                    alert("Your browser does not support the File System Access API. Please use Chrome, Edge, or Opera.");
+                    return;
+                }
+
+                state.directoryHandle = await window.showDirectoryPicker();
+                state.files = [];
+                state.associations = {};
+                state.currentIndex = -1;
+                
+                statusBar.textContent = "Scanning directory...";
+                
+                for await (const entry of getFilesRecursively(state.directoryHandle)) {
+                    const ext = entry.name.split('.').pop().toLowerCase();
+                    if ([...supportedImages, ...supportedVideos, ...appleFormats].includes(ext)) {
+                        state.files.push(entry);
+                        // Initialize empty associations
+                        state.associations[entry.name] = new Set();
+                    }
+                }
+
+                // Natural sort files
+                state.files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                if (state.files.length > 0) {
+                    state.currentIndex = 0;
+                    renderSidebar(); // Refresh sidebar to clear active states
+                    await loadMedia(0);
+                    statusBar.textContent = `Loaded ${state.files.length} files.`;
+                } else {
+                    statusBar.textContent = "No supported media found.";
+                }
+
+            } catch (err) {
+                console.error(err);
+                if (err.name !== 'AbortError') alert("Error importing: " + err.message);
+            }
+        }
+
+        async function* getFilesRecursively(entry) {
+            if (entry.kind === 'file') {
+                yield entry;
+            } else if (entry.kind === 'directory') {
+                for await (const handle of entry.values()) {
+                    yield* getFilesRecursively(handle);
+                }
+            }
+        }
+
+        /**
+         * CORE LOGIC: PREVIEW & BUFFERING
+         */
+        async function loadMedia(index) {
+            if (index < 0 || index >= state.files.length) return;
+
+            // Update UI Info
+            const handle = state.files[index];
+            fileInfo.textContent = `[${index + 1}/${state.files.length}] ${handle.name}`;
+            
+            // Highlight folders associated with this file
+            updateSidebarSelection();
+
+            // Check cache
+            let url = state.objectURLCache.get(index);
+            
+            if (!url) {
+                loader.style.display = 'flex';
+                try {
+                    const file = await handle.getFile();
+                    url = await processFileForPreview(file);
+                    state.objectURLCache.set(index, url);
+                    
+                    // Cleanup old cache (keep window of +/- 5)
+                    cleanCache(index);
+                } catch (e) {
+                    console.error("Preview error", e);
+                    loader.style.display = 'none';
+                    mediaContainer.innerHTML = `<div style="color:red">Preview Unavailable</div>`;
+                    return;
+                }
+            }
+
+            renderPreview(url, handle.name);
+            
+            // Buffer next image
+            if (index + 1 < state.files.length && !state.objectURLCache.has(index + 1)) {
+                preload(index + 1);
+            }
+        }
+
+        async function processFileForPreview(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            
+            // Handle HEIC
+            if (ext === 'heic') {
+                try {
+                    const blob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.5 });
+                    return URL.createObjectURL(blob);
+                } catch (e) {
+                    console.warn("HEIC conversion failed", e);
+                    throw e;
+                }
+            }
+
+            return URL.createObjectURL(file);
+        }
+
+        function renderPreview(url, filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            mediaContainer.innerHTML = ''; // Clear
+
+            let element;
+            if (supportedVideos.includes(ext) || ext === 'mov') {
+                element = document.createElement('video');
+                element.src = url;
+                element.controls = true;
+                element.autoplay = true;
+                element.loop = true;
+                element.muted = true; // Required for autoplay in many cases
+            } else {
+                element = document.createElement('img');
+                element.src = url;
+            }
+
+            element.onload = () => loader.style.display = 'none';
+            element.oncanplay = () => loader.style.display = 'none';
+            element.onerror = () => {
+                loader.style.display = 'none';
+                mediaContainer.innerHTML = 'Preview Error';
+            };
+
+            mediaContainer.appendChild(element);
+            
+            // Failsafe for instant load
+            setTimeout(() => loader.style.display = 'none', 500); 
+        }
+
+        async function preload(index) {
+            const handle = state.files[index];
+            const file = await handle.getFile();
+            const url = await processFileForPreview(file);
+            state.objectURLCache.set(index, url);
+        }
+
+        function cleanCache(currentIndex) {
+            for (const [key, url] of state.objectURLCache.entries()) {
+                if (Math.abs(key - currentIndex) > 5) {
+                    URL.revokeObjectURL(url);
+                    state.objectURLCache.delete(key);
+                }
+            }
+        }
+
+        /**
+         * CORE LOGIC: FOLDER MANAGEMENT & SIDEBAR
+         */
+        function addFolder() {
+            const name = prompt("Folder Name:");
+            if (name) {
+                const id = Date.now().toString();
+                state.folders.push({ id, name });
+                renderSidebar();
+            }
+        }
+
+        function renderSidebar() {
+            folderListEl.innerHTML = '';
+            state.folders.forEach((folder, idx) => {
+                const div = document.createElement('div');
+                div.className = 'folder-item';
+                div.dataset.id = folder.id;
+                div.onclick = () => toggleFolderAssignment(folder.id);
+
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.className = 'folder-checkbox';
+                chk.checked = isFolderSelected(folder.id);
+                
+                const span = document.createElement('span');
+                span.className = 'folder-name';
+                span.innerText = folder.name;
+
+                div.appendChild(chk);
+                div.appendChild(span);
+
+                if (idx < 6) {
+                    const badge = document.createElement('span');
+                    badge.className = 'hotkey-badge';
+                    badge.innerText = idx + 1;
+                    div.appendChild(badge);
+                }
+
+                folderListEl.appendChild(div);
+            });
+        }
+
+        function isFolderSelected(folderId) {
+            if (state.currentIndex === -1) return false;
+            const fileName = state.files[state.currentIndex].name;
+            const set = state.associations[fileName];
+            return set ? set.has(folderId) : false;
+        }
+
+        function toggleFolderAssignment(folderId) {
+            if (state.currentIndex === -1) return;
+            
+            const fileName = state.files[state.currentIndex].name;
+            if (!state.associations[fileName]) state.associations[fileName] = new Set();
+            
+            const set = state.associations[fileName];
+            if (set.has(folderId)) {
+                set.delete(folderId);
+            } else {
+                set.add(folderId);
+            }
+            
+            // Update UI for this specific item without re-rendering whole list
+            const item = folderListEl.querySelector(`.folder-item[data-id="${folderId}"] input`);
+            if (item) item.checked = set.has(folderId);
+        }
+
+        function updateSidebarSelection() {
+            // Refresh all checkboxes based on current file
+            const fileName = state.files[state.currentIndex].name;
+            const set = state.associations[fileName] || new Set();
+            
+            const checkboxes = folderListEl.querySelectorAll('.folder-item');
+            checkboxes.forEach(div => {
+                const id = div.dataset.id;
+                const input = div.querySelector('input');
+                input.checked = set.has(id);
+                
+                if(input.checked) div.classList.add('active');
+                else div.classList.remove('active');
+            });
+        }
+
+        /**
+         * CORE LOGIC: INPUT HANDLING
+         */
+        window.addEventListener('keydown', (e) => {
+            if (document.querySelector('.modal').style.display === 'flex') return;
+            if (state.currentIndex === -1) return;
+
+            // Navigation
+            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') {
+                if (state.currentIndex < state.files.length - 1) {
+                    state.currentIndex++;
+                    loadMedia(state.currentIndex);
+                }
+            } else if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') {
+                if (state.currentIndex > 0) {
+                    state.currentIndex--;
+                    loadMedia(state.currentIndex);
+                }
+            }
+
+            // Hotkeys 1-6
+            if (['1','2','3','4','5','6'].includes(e.key)) {
+                const idx = parseInt(e.key) - 1;
+                if (state.folders[idx]) {
+                    toggleFolderAssignment(state.folders[idx].id);
+                    updateSidebarSelection(); // Update visual state immediately
+                }
+            }
+        });
+
+        /**
+         * CORE LOGIC: EXPORT / COPY
+         */
+        async function exportFiles() {
+            if (state.files.length === 0) return;
+
+            const confirmMsg = `Ready to copy files? This will select a destination folder and begin copying.`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                // 1. Get Destination Handle
+                const destHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                
+                statusBar.textContent = "Starting export...";
+                let copyCount = 0;
+                let errorCount = 0;
+
+                // 2. Prepare Folder Handles
+                const folderHandles = {}; // map id -> directoryHandle
+                
+                // Create named folders
+                for (const folder of state.folders) {
+                    folderHandles[folder.id] = await destHandle.getDirectoryHandle(folder.name, { create: true });
+                }
+
+                // Create unsorted folder if needed
+                let unsortedHandle = null;
+                if (state.settings.copyUnsorted) {
+                    unsortedHandle = await destHandle.getDirectoryHandle("Unsorted", { create: true });
+                }
+
+                // 3. Iterate and Copy
+                for (let i = 0; i < state.files.length; i++) {
+                    const srcHandle = state.files[i];
+                    const fileName = srcHandle.name;
+                    const assignedIds = state.associations[fileName];
+                    
+                    statusBar.textContent = `Processing ${i+1}/${state.files.length}: ${fileName}`;
+
+                    // If assigned to folders
+                    if (assignedIds && assignedIds.size > 0) {
+                        for (const folderId of assignedIds) {
+                            if (folderHandles[folderId]) {
+                                await copyFile(srcHandle, folderHandles[folderId]);
+                                copyCount++;
+                            }
+                        }
+                    } else if (state.settings.copyUnsorted && unsortedHandle) {
+                        // Unsorted logic
+                        await copyFile(srcHandle, unsortedHandle);
+                        copyCount++;
+                    }
+                }
+
+                statusBar.textContent = `Done! Copied ${copyCount} files.`;
+                alert(`Export Complete.\nCopied: ${copyCount} instances.`);
+
+            } catch (err) {
+                console.error(err);
+                alert("Export failed or cancelled: " + err.message);
+                statusBar.textContent = "Export failed.";
+            }
+        }
+
+        async function copyFile(fileHandle, dirHandle) {
+            const file = await fileHandle.getFile();
+            // Create write handle in new dir
+            const newFileHandle = await dirHandle.getFileHandle(file.name, { create: true });
+            const writable = await newFileHandle.createWritable();
+            await writable.write(file);
+            await writable.close();
+        }
+
+        /**
+         * UI HELPERS
+         */
+        function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+            document.getElementById('chk-copy-unsorted').checked = state.settings.copyUnsorted;
+        }
+
+        function closeSettings() {
+            state.settings.copyUnsorted = document.getElementById('chk-copy-unsorted').checked;
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+        
+    </script>
+</body>
+</html>
